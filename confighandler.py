@@ -26,10 +26,18 @@ def write_new_config(path):
 		Config.add_section('TempSensor')
 		Config.set('TempSensor','path','/sys/devices/w1/bus/devices/28-00000XXXXXXX/w1_slave')
 		
-		# ControllerSettings
+		# Controller settings
 		Config.add_section('Control')
 		Config.set('Control','checkintervalseconds','60')
 		Config.set('Control','enabled','true')
+        
+        # Database settings
+		Config.add_section('Database')
+		Config.set('Database','EnableLogging','False')
+		Config.set('Database','hostname','localhost')
+		Config.set('Database','username','username')
+		Config.set('Database','password','password')
+		Config.set('Database','dbname','dbname')
 		
 		Config.write(cfgfile)
 		cfgfile.close()
@@ -64,9 +72,8 @@ def setdeadband(path, temp):
 	
 	# release file lock
 	GLOBALS.ConfigLock.release()
-
 	
 if __name__ == "__main__":
 	print 'Writing new config file...'
-	write_new_config("/home/pi/bin/beer/config.ini")
+	write_new_config("config.ini")
 	print 'Write successful.'

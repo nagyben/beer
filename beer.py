@@ -54,7 +54,7 @@ GLOBALS.BeerProcessKill = threading.Event()
 
 # Connect to mysql database
 try:
-	GLOBALS.cnx = mysql.connect(user='beerpi', password='brubeer', host='localhost', database='brewery')
+	GLOBALS.cnx = mysql.connect(user=Config.get('Database','username'), password=Config.get('Database','password'), host=Config.get('Database','hostname'), database=Config.get('Database','dbname'))
 	GLOBALS.cnx.autocommit = True
 except mysql.Error as err:
 	if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:

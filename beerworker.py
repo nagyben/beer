@@ -14,14 +14,16 @@ class BeerWorker(threading.Thread):
 	stoprequest = threading.Event()
 	controlEnabled = False
 	tempSensorDir = ""
-	FridgeGPIO = 0
-	HeaterGPIO = 0
+	FridgeGPIO = 0      # Cooling element GPIO pin (BCM FORMAT)
+	HeaterGPIO = 0      # Heating element GPIO pin (BCM FORMAT)
 	
-	BWLog = 0		# BeerWorker Log
+	BWLog = 0		    # BeerWorker Log
 	cnxCur = 0			# MySQL connection cursor object
 	
-	setPoint = 0
-	deadband = 0
+	setPoint = 0        # setpoint
+	deadband = 0        # deadband
+    
+    dbLogging = False   # Database logging
 	
 	# BeerWorker is asked to politely stop by calling 
 	# BeerWorker.stoprequest.set()
@@ -40,6 +42,9 @@ class BeerWorker(threading.Thread):
 			self.tempSensorDir = Config.get('TempSensor','path')
 		except ValueError:
 			GLOBALS.beerlogger.error('fridgepin or heaterpin has not been set in config.ini. Please set these!')
+		
+		if Config.get('Database','enablelogging').lower = 'true':
+			self.dbLogging = True
 		
 		# set up a BWLog
 		self.BWLog = logging.getLogger('BeerWorker')
@@ -95,6 +100,10 @@ class BeerWorker(threading.Thread):
 		if self.id < 1:
 			self.BWLog.error('id has not been set correctly. id must be larger than 1.')
 			return False
+        
+        if self.tempHigh < self.tempLow:
+            self.BWLog.error('Upper temperature bound cannot be set lower than lower temperature bound! Check config.ini!')
+            return False
 		
 		return True
 		
@@ -135,6 +144,7 @@ class BeerWorker(threading.Thread):
 					self.BWLog.info('BeerWorker starting with control enabled!')
 				else:
 					self.BWLog.info('BeerWorker starting with control disabled!')
+                    
 				while not self.stoprequest.isSet():
 					# Refresh temperatures from config file
 					self.GetTempInfo()
@@ -146,14 +156,15 @@ class BeerWorker(threading.Thread):
 					fridge_state = wiringpi.digitalRead(self.FridgeGPIO)
 					heater_state = wiringpi.digitalRead(self.HeaterGPIO)
 					
-					# write temperature into mysql database
-					if temp_beer != None:
-						try:
-							self.cnxCur.execute('INSERT INTO templog(beer_id, timestamp, temperature) VALUES(%s, %s, %s)', (self.id, time.time(), temp_beer))
-							self.cnxCur.execute('INSERT INTO fridge_power(beer_id, timestamp, power) VALUES(%s, %s, %s)', (self.id, time.time(), fridge_state))
-							self.cnxCur.execute('INSERT INTO heater_power(beer_id, timestamp, power) VALUES(%s, %s, %s)', (self.id, time.time(), heater_state))
-						except mysql.connector.Error as err:
-							self.BWLog.warning(err)
+					# write temperature into mysql database, if database logging is enabled
+                    if self.dbLogging = True:
+                        if temp_beer != None:
+                            try:
+                                self.cnxCur.execute('INSERT INTO templog(beer_id, timestamp, temperature) VALUES(%s, %s, %s)', (self.id, time.time(), temp_beer))
+                                self.cnxCur.execute('INSERT INTO fridge_power(beer_id, timestamp, power) VALUES(%s, %s, %s)', (self.id, time.time(), fridge_state))
+                                self.cnxCur.execute('INSERT INTO heater_power(beer_id, timestamp, power) VALUES(%s, %s, %s)', (self.id, time.time(), heater_state))
+                            except mysql.connector.Error as err:
+                                self.BWLog.warning(err)
 					
 					if self.controlEnabled == True:
 						# set upper and lower temperature limits
